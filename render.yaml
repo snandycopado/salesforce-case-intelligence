@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: case-intelligence-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: SF_USERNAME
+        sync: false
+      - key: SF_PASSWORD
+        sync: false
+      - key: SF_SECURITY_TOKEN
+        sync: false
+      - key: SF_DOMAIN
+        value: login
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-6
+      - key: LOG_LEVEL
+        value: INFO
+
+  - type: web
+    name: case-intelligence-frontend
+    runtime: static
+    buildCommand: cd frontend-react && npm install && npm run build
+    staticPublishPath: ./frontend-react/build
+    plan: free
+    envVars:
+      - key: REACT_APP_API_URL
+        sync: false

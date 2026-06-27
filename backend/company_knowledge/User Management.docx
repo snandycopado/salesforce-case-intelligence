@@ -1,0 +1,8 @@
+How to reset User Password ?
+
+1. Identify the User Name from case description
+Steps Perform on User OBject
+2. Check the user is exist or not, If not exist then send email to customer that user doesn't exist
+3. If Exist check user is active or not at user object
+4. If not active , Activate user then send reset password
+5. Finally send an email to customer to chekc the issue has been resolved or not

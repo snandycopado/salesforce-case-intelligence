@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+node_modules/
+build/
+.venv/
+*.egg-info/
+backend/knowledge_base/vectors/
+backend/__pycache__/
+frontend-react/node_modules/
+frontend-react/build/
