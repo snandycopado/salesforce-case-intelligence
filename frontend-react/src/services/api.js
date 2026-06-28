@@ -58,6 +58,10 @@ export async function resolveCase(caseId) {
   }, 0);
 }
 
+export async function getCaseByNumber(caseNumber) {
+  return request(`/api/case-by-number/${caseNumber}`);
+}
+
 export async function agentAction(caseId, action, comments, previousResolution) {
   return request('/agent-action', {
     method: 'POST',

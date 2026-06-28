@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { agentAction } from '../services/api';
-
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+import { agentAction, getCaseByNumber, resolveCase } from '../services/api';
 
 export default function CaseValidator() {
   const [caseNumber, setCaseNumber] = useState('');
@@ -20,12 +18,8 @@ export default function CaseValidator() {
     setResolution(null);
     setExecutionResult(null);
     try {
-      const res = await fetch(`${API_BASE}/api/case-by-number/${caseNumber.trim()}`);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || 'Case not found');
-      }
-      setCaseData(await res.json());
+      const data = await getCaseByNumber(caseNumber.trim());
+      setCaseData(data);
     } catch (e) {
       alert('Error: ' + e.message);
     } finally {
@@ -39,16 +33,8 @@ export default function CaseValidator() {
     setResolution(null);
     setExecutionResult(null);
     try {
-      const res = await fetch(`${API_BASE}/resolve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: caseData.Id }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || 'Resolution failed');
-      }
-      setResolution(await res.json());
+      const data = await resolveCase(caseData.Id);
+      setResolution(data);
     } catch (e) {
       alert('Error: ' + e.message);
     } finally {
@@ -83,8 +69,8 @@ export default function CaseValidator() {
     if (!caseNumber.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/case-by-number/${caseNumber.trim()}`);
-      if (res.ok) setCaseData(await res.json());
+      const data = await getCaseByNumber(caseNumber.trim());
+      setCaseData(data);
     } catch (e) { /* ignore */ }
     setLoading(false);
   };
