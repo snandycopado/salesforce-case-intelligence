@@ -94,9 +94,26 @@ class KnowledgeGenResponse(BaseModel):
 
 @app.get("/health")
 def health():
+    org_info = {}
+    if sf_client:
+        try:
+            org = sf_client.query(
+                "SELECT Name, OrganizationType, IsSandbox FROM Organization LIMIT 1"
+            )
+            if org:
+                org_info = {
+                    "org_name": org[0].get("Name", ""),
+                    "org_type": org[0].get("OrganizationType", ""),
+                    "is_sandbox": org[0].get("IsSandbox", False),
+                }
+            org_info["username"] = settings.sf_username
+        except Exception:
+            org_info["username"] = settings.sf_username
+
     return {
         "status": "healthy",
         "articles_in_store": vector_store.get_article_count() if vector_store else 0,
+        **org_info,
     }
 
 

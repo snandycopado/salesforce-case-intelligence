@@ -51,7 +51,7 @@ function App() {
 
   return (
     <div className="app">
-      <Header status={health?.status} />
+      <Header health={health} />
 
       <nav className="nav">
         {TABS.map((tab) => (
