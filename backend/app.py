@@ -329,10 +329,14 @@ def list_company_knowledge():
     return {"files": files}
 
 
-@app.get("/", response_class=HTMLResponse)
-def serve_frontend():
-    frontend_path = Path(__file__).parent / "frontend" / "index.html"
-    return HTMLResponse(frontend_path.read_text(encoding="utf-8"))
+@app.get("/")
+def root():
+    return {
+        "service": "Salesforce Case Intelligence Platform",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health",
+    }
 
 
 if __name__ == "__main__":
