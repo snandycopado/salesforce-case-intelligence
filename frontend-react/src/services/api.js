@@ -1,4 +1,4 @@
-const API_BASE = process.env.REACT_APP_API_URL || 'https://salesforce-case-intelligence.onrender.com';
+const API_BASE = (process.env.REACT_APP_API_URL || 'https://salesforce-case-intelligence.onrender.com').replace(/\/+$/, '');
 
 async function request(path, options = {}, retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
