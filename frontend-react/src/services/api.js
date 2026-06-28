@@ -1,12 +1,28 @@
 const API_BASE = process.env.REACT_APP_API_URL || 'https://salesforce-case-intelligence.onrender.com';
 
-async function request(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, options);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Request failed');
+async function request(path, options = {}, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+      const res = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || 'Request failed');
+      }
+      return res.json();
+    } catch (e) {
+      if (attempt < retries && (e.name === 'AbortError' || e.message === 'Failed to fetch')) {
+        console.log(`Retry ${attempt + 1}/${retries} for ${path}...`);
+        continue;
+      }
+      throw e;
+    }
   }
-  return res.json();
 }
 
 export async function getHealth() {
@@ -31,7 +47,7 @@ export async function getCompanyKnowledge() {
 
 export async function generateKnowledge(sync = false) {
   const endpoint = sync ? '/generate-knowledge-sync' : '/generate-knowledge';
-  return request(endpoint);
+  return request(endpoint, {}, 0);
 }
 
 export async function resolveCase(caseId) {
@@ -39,7 +55,7 @@ export async function resolveCase(caseId) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ case_id: caseId }),
-  });
+  }, 0);
 }
 
 export async function agentAction(caseId, action, comments, previousResolution) {
@@ -52,5 +68,5 @@ export async function agentAction(caseId, action, comments, previousResolution) 
       comments,
       previous_resolution: previousResolution,
     }),
-  });
+  }, 0);
 }
