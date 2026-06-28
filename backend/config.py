@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     vector_store_dir: Path = Path("./knowledge_base/vectors")
     company_knowledge_dir: Path = Path("./company_knowledge")
 
-    embedding_model: str = "all-MiniLM-L6-v2"
+    voyage_api_key: str = ""
     vector_search_top_k: int = 5
     confidence_threshold: float = 0.75
 
