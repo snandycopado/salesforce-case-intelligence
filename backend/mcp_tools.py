@@ -99,6 +99,30 @@ TOOL_DEFINITIONS = [
         },
     },
     {
+        "name": "update_account_field",
+        "description": "Update a field on a Salesforce Account record. Lookup is ALWAYS by Employee_Id__c (NOT by name or email). Use this for Account Management requests — these are identified by an Employee ID, not a username. Common fields: Name, Phone, BillingStreet, Industry, AnnualRevenue, or any custom Account field. NEVER use this for User login/lockout issues — those belong to the User object via unlock_user/update_user_field.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "employee_id": {"type": "string", "description": "Value of Employee_Id__c on the Account record"},
+                "field_name": {"type": "string", "description": "API name of the Account field to update"},
+                "field_value": {"type": "string", "description": "New value for the field"},
+            },
+            "required": ["employee_id", "field_name", "field_value"],
+        },
+    },
+    {
+        "name": "query_account_by_employee_id",
+        "description": "Look up an Account record by Employee_Id__c and return its details. Use this to verify the account exists or to read current field values before updating, for Account Management requests.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "employee_id": {"type": "string", "description": "Value of Employee_Id__c on the Account record"},
+            },
+            "required": ["employee_id"],
+        },
+    },
+    {
         "name": "reassign_case",
         "description": "Reassign the case to a different owner (user or queue). Use this when the case needs to be routed to another team.",
         "input_schema": {
@@ -248,3 +272,27 @@ class MCPToolExecutor:
         user_id = users[0]["Id"]
         self.sf.sf.User.update(user_id, {field_name: field_value})
         return f"User field '{field_name}' updated to '{field_value}' for {users[0].get('Name', email)}"
+
+    def _tool_query_account_by_employee_id(self, employee_id: str) -> str:
+        import json
+        accounts = self.sf.query(
+            f"SELECT Id, Name, Employee_Id__c, Phone, BillingStreet, BillingCity, "
+            f"BillingState, BillingPostalCode, Industry, AnnualRevenue "
+            f"FROM Account WHERE Employee_Id__c = '{employee_id}' LIMIT 1"
+        )
+        if not accounts:
+            return f"Error: No Account found with Employee_Id__c = '{employee_id}'"
+
+        account = {k: v for k, v in accounts[0].items() if k != "attributes"}
+        return json.dumps(account, indent=2, default=str)
+
+    def _tool_update_account_field(self, employee_id: str, field_name: str, field_value: str) -> str:
+        accounts = self.sf.query(
+            f"SELECT Id, Name FROM Account WHERE Employee_Id__c = '{employee_id}' LIMIT 1"
+        )
+        if not accounts:
+            return f"Error: No Account found with Employee_Id__c = '{employee_id}'"
+
+        account_id = accounts[0]["Id"]
+        self.sf.sf.Account.update(account_id, {field_name: field_value})
+        return f"Account field '{field_name}' updated to '{field_value}' for account '{accounts[0].get('Name', employee_id)}' (Employee ID: {employee_id})"

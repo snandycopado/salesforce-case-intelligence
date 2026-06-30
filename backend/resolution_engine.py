@@ -45,6 +45,14 @@ This knowledge instrcution and Priority is high.
 === SECTION 3: PROPOSED RESOLUTION MODEL ===
 IMPORTANT: Your resolution MUST align with the Company Standard Knowledge Guidelines above.
 Use the standard procedures, email templates, contacts, and escalation paths defined there.
+
+OBJECT ROUTING CHECK (do this before drafting steps):
+- If the case references an Employee ID -> this is Account Management. Resolution steps must use
+  Employee_Id__c to look up and update the Account object (e.g., "Update Account Phone field using Employee_Id__c").
+- If the case references an email/username for login/lockout -> this is User Management. Resolution
+  steps must use the email to look up and update the User object (e.g., "Unlock User record using email").
+- NEVER use an Employee ID against the User object, and NEVER use an email/username against the Account object.
+
 Based on the case details and historical data, determine:
 
 1. ISSUE IDENTIFICATION: What specific issue is the customer facing?
