@@ -1,0 +1,13 @@
+How to update account information ?
+
+1. Identify the Employee Id From Email
+Steps Perform on User OBject
+2. Check the account is exist or not. If not exist then ask customer to send right employee id
+3. If Exist check FIND THE ACCOUNT OBJECT RECORD
+4. Update the field asked on the email
+5. Finally send an email to customer to chekc the issue has been resolved or not
+
+Field Name vs API Name
+Email--> Email__c
+Name --> Name
+Phone --> Phone
