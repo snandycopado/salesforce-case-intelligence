@@ -236,8 +236,25 @@ class MCPToolExecutor:
         users = self.sf.query(
             f"SELECT Id, Name, IsActive, Username FROM User WHERE Email = '{email}' LIMIT 1"
         )
+
         if not users:
-            return f"Error: No User found with email '{email}' in User object"
+            # Fallback: email may belong to a Contact whose linked User has a different email/username
+            contacts = self.sf.query(
+                f"SELECT Id, Name FROM Contact WHERE Email = '{email}' LIMIT 1"
+            )
+            if contacts:
+                contact_id = contacts[0]["Id"]
+                users = self.sf.query(
+                    f"SELECT Id, Name, IsActive, Username FROM User "
+                    f"WHERE ContactId = '{contact_id}' LIMIT 1"
+                )
+
+        if not users:
+            return (
+                f"Error: No User record found for '{email}' (checked User.Email and "
+                f"Contact->User.ContactId). This contact may not have a portal/community "
+                f"user account. Do not claim the account was unlocked."
+            )
 
         user = users[0]
         user_id = user["Id"]
