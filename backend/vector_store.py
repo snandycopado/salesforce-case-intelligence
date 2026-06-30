@@ -33,17 +33,24 @@ class VectorStore:
 
     def _get_embedding(self, text: str) -> list[float]:
         text = text[:8000]
-        response = httpx.post(
-            "https://api.voyageai.com/v1/embeddings",
-            headers={"Authorization": f"Bearer {settings.voyage_api_key}"},
-            json={"input": [text], "model": "voyage-3-lite"},
-            timeout=30,
-        )
-        if response.status_code == 200:
-            return response.json()["data"][0]["embedding"]
+
+        if not settings.voyage_api_key:
+            return self._fallback_embedding(text)
+
+        try:
+            response = httpx.post(
+                "https://api.voyageai.com/v1/embeddings",
+                headers={"Authorization": f"Bearer {settings.voyage_api_key}"},
+                json={"input": [text], "model": "voyage-3-lite"},
+                timeout=30,
+            )
+            if response.status_code == 200:
+                return response.json()["data"][0]["embedding"]
+            log.warning("voyage_api_failed", status=response.status_code)
+        except Exception as e:
+            log.warning("voyage_api_error", error=str(e))
 
         # Fallback: simple hash-based embedding for when API is unavailable
-        log.warning("voyage_api_failed", status=response.status_code)
         return self._fallback_embedding(text)
 
     @staticmethod
