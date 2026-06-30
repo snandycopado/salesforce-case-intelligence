@@ -46,11 +46,18 @@ This knowledge instrcution and Priority is high.
 IMPORTANT: Your resolution MUST align with the Company Standard Knowledge Guidelines above.
 Use the standard procedures, email templates, contacts, and escalation paths defined there.
 
+CASE CATEGORY CLASSIFICATION (do this first — sets the Case Type field):
+Classify the case into EXACTLY ONE of these four categories:
+- "User Management" — login, password, lockout, user access issues. Identified by email/username.
+- "Account Management" — company/account-level data changes. Identified by an Employee ID. Uses Employee_Id__c on the Account object.
+- "Financial Transaction Issues" — billing, payments, charges, refunds, transaction discrepancies.
+- "HR" — employee records, leave, payroll, internal HR policy questions (not customer-facing account data).
+
 OBJECT ROUTING CHECK (do this before drafting steps):
-- If the case references an Employee ID -> this is Account Management. Resolution steps must use
-  Employee_Id__c to look up and update the Account object (e.g., "Update Account Phone field using Employee_Id__c").
-- If the case references an email/username for login/lockout -> this is User Management. Resolution
-  steps must use the email to look up and update the User object (e.g., "Unlock User record using email").
+- If category is "Account Management" -> Resolution steps must use Employee_Id__c to look up and
+  update the Account object (e.g., "Update Account Phone field using Employee_Id__c").
+- If category is "User Management" -> Resolution steps must use the email to look up and update the
+  User object (e.g., "Unlock User record using email").
 - NEVER use an Employee ID against the User object, and NEVER use an email/username against the Account object.
 
 Based on the case details and historical data, determine:
@@ -75,6 +82,7 @@ IMPORTANT RULES FOR RESPONSE:
 
 Respond in the following JSON format ONLY (no markdown, no extra text):
 {{
+    "case_category": "User Management | Account Management | Financial Transaction Issues | HR",
     "issue_summary": "...",
     "root_cause": "...",
     "recommended_action": "auto_resolve | escalate | route | request_info",
@@ -90,8 +98,16 @@ Respond in the following JSON format ONLY (no markdown, no extra text):
 }}
 """
 
+VALID_CASE_CATEGORIES = {
+    "User Management",
+    "Account Management",
+    "Financial Transaction Issues",
+    "HR",
+}
+
 
 class ResolutionResult(BaseModel):
+    case_category: str
     issue_summary: str
     root_cause: str
     recommended_action: str
@@ -195,6 +211,11 @@ class ResolutionEngine:
         if not match:
             raise ValueError(f"No JSON found in AI response: {raw[:200]}")
         data = json.loads(match.group())
+
+        if data.get("case_category") not in VALID_CASE_CATEGORIES:
+            log.warning("invalid_case_category", value=data.get("case_category"))
+            data["case_category"] = "User Management"
+
         return ResolutionResult(**data)
 
     def _build_rich_text_notes(self, result: ResolutionResult) -> str:
@@ -216,6 +237,7 @@ class ResolutionEngine:
     def _update_salesforce(self, case_id: str, result: ResolutionResult):
         rich_notes = self._build_rich_text_notes(result)
         update_data = {
+            "Type": result.case_category,
             "AI_Resolution_Notes__c": rich_notes,
             "AI_Confidence_Score__c": result.confidence_score,
             "AI_Recommended_Action__c": result.recommended_action,
@@ -226,12 +248,16 @@ class ResolutionEngine:
             self.sf.update_case(case_id, update_data)
         except Exception:
             log.warning(
-                "sf_custom_fields_missing",
+                "sf_update_failed_full",
                 case_id=case_id,
-                msg="Storing resolution as case comment instead",
+                msg="Retrying without Type field, then falling back to comment",
             )
-            self.sf.sf.CaseComment.create({
-                "ParentId": case_id,
-                "CommentBody": f"[AI Resolution - Pending Review]\n{result.resolution_notes}",
-                "IsPublished": False,
-            })
+            try:
+                update_data.pop("Type", None)
+                self.sf.update_case(case_id, update_data)
+            except Exception:
+                self.sf.sf.CaseComment.create({
+                    "ParentId": case_id,
+                    "CommentBody": f"[AI Resolution - Pending Review]\nCategory: {result.case_category}\n{result.resolution_notes}",
+                    "IsPublished": False,
+                })

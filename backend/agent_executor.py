@@ -88,6 +88,7 @@ IMPORTANT RULES:
 
 Respond in the following JSON format ONLY (no markdown, no extra text):
 {{
+    "case_category": "User Management | Account Management | Financial Transaction Issues | HR",
     "issue_summary": "...",
     "root_cause": "...",
     "recommended_action": "auto_resolve | escalate | route | request_info",
@@ -102,6 +103,13 @@ Respond in the following JSON format ONLY (no markdown, no extra text):
     "reasoning": "Brief reason"
 }}
 """
+
+VALID_CASE_CATEGORIES = {
+    "User Management",
+    "Account Management",
+    "Financial Transaction Issues",
+    "HR",
+}
 
 
 class AgentExecutor:
@@ -303,6 +311,10 @@ class AgentExecutor:
             raise ValueError(f"No JSON found in AI response: {raw[:200]}")
         revised = json.loads(match.group())
 
+        if revised.get("case_category") not in VALID_CASE_CATEGORIES:
+            log.warning("invalid_case_category", value=revised.get("case_category"))
+            revised["case_category"] = case.get("Type") or "User Management"
+
         status_map = {
             "partially_correct": "Partially Correct Resolution",
             "not_right": "Incorrect Resolution",
@@ -323,15 +335,22 @@ class AgentExecutor:
             f"<p>{revised.get('customer_email_body', '').replace(chr(10), '<br/>')}</p>"
         )
 
+        revise_update = {
+            "Type": revised["case_category"],
+            "AI_Resolution_Notes__c": rich_notes,
+            "AI_Confidence_Score__c": revised.get("confidence_score", 0),
+            "AI_Recommended_Action__c": revised.get("recommended_action", ""),
+            "AI_Resolution_Status__c": status_map.get(agent_action, "Pending"),
+        }
         try:
-            self.sf.update_case(case_id, {
-                "AI_Resolution_Notes__c": rich_notes,
-                "AI_Confidence_Score__c": revised.get("confidence_score", 0),
-                "AI_Recommended_Action__c": revised.get("recommended_action", ""),
-                "AI_Resolution_Status__c": status_map.get(agent_action, "Pending"),
-            })
+            self.sf.update_case(case_id, revise_update)
         except Exception:
-            log.warning("sf_update_fallback", case_id=case_id)
+            log.warning("sf_update_failed_full", case_id=case_id, msg="Retrying without Type")
+            try:
+                revise_update.pop("Type", None)
+                self.sf.update_case(case_id, revise_update)
+            except Exception:
+                log.warning("sf_update_fallback", case_id=case_id)
 
         self.tool_executor.execute_tool("add_case_comment", {
             "case_id": case_id,
